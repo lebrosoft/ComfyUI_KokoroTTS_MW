@@ -1,27 +1,27 @@
 [中文](README.md) | [English](README-en.md) 
 
-# ComfyUI 的 Kokoro 文本转语音节点
+# Kokoro TextToSpeech Node for ComfyUI
 
 ![image](https://github.com/billwuhao/ComfyUI_KokoroTTS_MW/blob/master/images/2025-02-17_01-39-16.png)
 
-## 特性
+## Features
 
-- 高质量文本转语音
-- 多种音色可选
-- 支持多种语言的文本
-- 与ComfyUI工作流轻松集成
+- High-quality text-to-speech synthesis
+- Multiple voice options
+- Support for multilingual text
+- Easy integration with ComfyUI workflows
 
-## 支持语言
+## Supported Language
 
-'a' => American English 美式英语
+'a' => American English 
 
-'b' => British English 英语
+'b' => British English 
 
-'j' => Japanese 日语
+'j' => Japanese 
 
-'z' => Chinese 中文
+'z' => Chinese 
 
-## 可用音色
+## Available Voices
 
 "a": 
 
@@ -44,11 +44,11 @@
 ["zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi",
    "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]
 
-## 模型和音色下载
+## Model and Voices Download
 
-1. 模型将自动下载到 `C:\Users\xxx\.cache\huggingface\hub\models--hexgrad--Kokoro-82M`
-2. 音色请 [这里](https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices) 手动下载放到 `ComfyUI\models\Kokorotts\voices` 路径下
+1. The model will be automatically downloaded to `C:\Users\xxx\.cache\huggingface\hub\models--hexgrad--Kokoro-82M`
+2. Voices, please [here](https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices) Manually download and place it in the `ComfyUI\models\Kokorotts\voices` path
 
-## 感谢
+### Thank You
 
 - [Kokoro](https://github.com/hexgrad/kokoro)

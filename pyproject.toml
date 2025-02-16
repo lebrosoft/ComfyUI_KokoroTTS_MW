@@ -1,0 +1,14 @@
+[project]
+name = "kokorotts_mw"
+description = "A Text To Speech node using Kokoro TTS in ComfyUI"
+version = "1.0.0"
+license = {file = "LICENSE"}
+
+[project.urls]
+Repository = "https://github.com/billwuhao/ComfyUI_KokoroTTS_MW"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "mw"
+DisplayName = "ComfyUI_KokoroTTS_MW"
+Icon = "https://github.com/billwuhao/aiart.website/blob/master/hb.png"

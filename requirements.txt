@@ -1,0 +1,8 @@
+# kokoro-onnx
+# onnxruntime
+numpy<2
+kokoro>=0.7.11 
+soundfile
+misaki[zh]
+misaki[ja]
+misaki[en]
