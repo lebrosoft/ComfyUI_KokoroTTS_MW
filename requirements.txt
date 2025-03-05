@@ -1,8 +1,8 @@
 # kokoro-onnx
 # onnxruntime
 numpy<2
-kokoro>=0.7.11 
+kokoro>=0.8.2
 soundfile
-misaki[zh]
+misaki[zh]>=0.8.2
 misaki[ja]
 misaki[en]
