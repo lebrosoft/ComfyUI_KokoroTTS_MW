@@ -117,11 +117,6 @@ ComfyUI\models\Kokorotts
 ["zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi",
    "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]
 
-## 模型和音色下载(**已移动位置, 已下载的模型, 音色自行移动**)
-
-1. 模型将自动下载到 `C:\Users\xxx\.cache\huggingface\hub\models--hexgrad--Kokoro-82M`
-2. 音色请 [这里](https://huggingface.co/hexgrad/Kokoro-82M/tree/main/voices) 手动下载放到 `ComfyUI\models\Kokorotts\voices` 路径下
-
 ## 感谢
 
 - [Kokoro](https://github.com/hexgrad/kokoro)
