@@ -6,6 +6,8 @@
 
 ## 📣 Update
 
+[2025-03-22] ⚒️: Refactored code, faster generation speed. 
+
 [2025-03-05]⚒️: Supports 8 languages and 150 voices.
 
 - New language support added: 

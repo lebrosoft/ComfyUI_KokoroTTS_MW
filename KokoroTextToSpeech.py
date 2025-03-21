@@ -87,7 +87,19 @@ all_speakers = []
 for speakers in SPEAKER_LANG_MAPPING.values():
     all_speakers.extend(speakers)
 
-zh_all_speakers = ['zf_001.pt', 'zf_002.pt', 'zf_003.pt', 'zf_004.pt', 'zf_005.pt', 'zf_006.pt', 'zf_007.pt', 'zf_008.pt', 'zf_017.pt', 'zf_018.pt', 'zf_019.pt', 'zf_021.pt', 'zf_022.pt', 'zf_023.pt', 'zf_024.pt', 'zf_026.pt', 'zf_027.pt', 'zf_028.pt', 'zf_032.pt', 'zf_036.pt', 'zf_038.pt', 'zf_039.pt', 'zf_040.pt', 'zf_042.pt', 'zf_043.pt', 'zf_044.pt', 'zf_046.pt', 'zf_047.pt', 'zf_048.pt', 'zf_049.pt', 'zf_051.pt', 'zf_059.pt', 'zf_060.pt', 'zf_067.pt', 'zf_070.pt', 'zf_071.pt', 'zf_072.pt', 'zf_073.pt', 'zf_074.pt', 'zf_075.pt', 'zf_076.pt', 'zf_077.pt', 'zf_078.pt', 'zf_079.pt', 'zf_083.pt', 'zf_084.pt', 'zf_085.pt', 'zf_086.pt', 'zf_087.pt', 'zf_088.pt', 'zf_090.pt', 'zf_092.pt', 'zf_093.pt', 'zf_094.pt', 'zf_099.pt', 'zm_009.pt', 'zm_010.pt', 'zm_011.pt', 'zm_012.pt', 'zm_013.pt', 'zm_014.pt', 'zm_015.pt', 'zm_016.pt', 'zm_020.pt', 'zm_025.pt', 'zm_029.pt', 'zm_030.pt', 'zm_031.pt', 'zm_033.pt', 'zm_034.pt', 'zm_035.pt', 'zm_037.pt', 'zm_041.pt', 'zm_045.pt', 'zm_050.pt', 'zm_052.pt', 'zm_053.pt', 'zm_054.pt', 'zm_055.pt', 'zm_056.pt', 'zm_057.pt', 'zm_058.pt', 'zm_061.pt', 'zm_062.pt', 'zm_063.pt', 'zm_064.pt', 'zm_065.pt', 'zm_066.pt', 'zm_068.pt', 'zm_069.pt', 'zm_080.pt', 'zm_081.pt', 'zm_082.pt', 'zm_089.pt', 'zm_091.pt', 'zm_095.pt', 'zm_096.pt', 'zm_097.pt', 'zm_098.pt', 'zm_100.pt']
+zh_all_speakers = ['zf_001.pt', 'zf_002.pt', 'zf_003.pt', 'zf_004.pt', 'zf_005.pt', 'zf_006.pt', 'zf_007.pt', 'zf_008.pt', 
+                   'zf_017.pt', 'zf_018.pt', 'zf_019.pt', 'zf_021.pt', 'zf_022.pt', 'zf_023.pt', 'zf_024.pt', 'zf_026.pt', 
+                   'zf_027.pt', 'zf_028.pt', 'zf_032.pt', 'zf_036.pt', 'zf_038.pt', 'zf_039.pt', 'zf_040.pt', 'zf_042.pt', 
+                   'zf_043.pt', 'zf_044.pt', 'zf_046.pt', 'zf_047.pt', 'zf_048.pt', 'zf_049.pt', 'zf_051.pt', 'zf_059.pt', 
+                   'zf_060.pt', 'zf_067.pt', 'zf_070.pt', 'zf_071.pt', 'zf_072.pt', 'zf_073.pt', 'zf_074.pt', 'zf_075.pt', 
+                   'zf_076.pt', 'zf_077.pt', 'zf_078.pt', 'zf_079.pt', 'zf_083.pt', 'zf_084.pt', 'zf_085.pt', 'zf_086.pt', 
+                   'zf_087.pt', 'zf_088.pt', 'zf_090.pt', 'zf_092.pt', 'zf_093.pt', 'zf_094.pt', 'zf_099.pt', 'zm_009.pt', 
+                   'zm_010.pt', 'zm_011.pt', 'zm_012.pt', 'zm_013.pt', 'zm_014.pt', 'zm_015.pt', 'zm_016.pt', 'zm_020.pt', 
+                   'zm_025.pt', 'zm_029.pt', 'zm_030.pt', 'zm_031.pt', 'zm_033.pt', 'zm_034.pt', 'zm_035.pt', 'zm_037.pt', 
+                   'zm_041.pt', 'zm_045.pt', 'zm_050.pt', 'zm_052.pt', 'zm_053.pt', 'zm_054.pt', 'zm_055.pt', 'zm_056.pt', 
+                   'zm_057.pt', 'zm_058.pt', 'zm_061.pt', 'zm_062.pt', 'zm_063.pt', 'zm_064.pt', 'zm_065.pt', 'zm_066.pt', 
+                   'zm_068.pt', 'zm_069.pt', 'zm_080.pt', 'zm_081.pt', 'zm_082.pt', 'zm_089.pt', 'zm_091.pt', 'zm_095.pt', 
+                   'zm_096.pt', 'zm_097.pt', 'zm_098.pt', 'zm_100.pt']
 
 node_dir = os.path.dirname(os.path.abspath(__file__))
 comfy_path = os.path.dirname(os.path.dirname(node_dir))
@@ -103,6 +115,7 @@ zh_voices_path = os.path.join(zh_kokoro_path, "voices")
 
 
 class KokoroRun:
+    model_cache = None
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -111,14 +124,15 @@ class KokoroRun:
                 "text": ("STRING", {
                     "multiline": True, 
                     "default": "你好啊! 世界."
-                })
+                }),
+                "unload_model": ("BOOLEAN", {"default": False}),
             },
         }
 
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
-    CATEGORY = "MW-KokoroTTS"
+    CATEGORY = "MW/MW-KokoroTTS"
 
     def _get_lang(self, voice):
         if voice in all_speakers:
@@ -128,11 +142,15 @@ class KokoroRun:
         else:
             raise ValueError("This is a unsupported voice")
 
-    def generate(self, text, voice):
+    def generate(self, text, voice, unload_model):
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        model = KModel(
-                    config = kk_config_path,
-                    model = kk_model_path).to(device).eval()
+        if self.model_cache is None:      
+            model = KModel(
+                        config = kk_config_path,
+                        model = kk_model_path).to(device).eval()
+            self.model_cache = model
+        else:
+            model = self.model_cache
 
         lang = self._get_lang(voice)
         pipeline = KPipeline(lang_code=lang, repo_id=None, model=model)
@@ -145,14 +163,22 @@ class KokoroRun:
                 audio_data.append(data)
             audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
             logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+            if unload_model:
+                del model
+                self.model_cache = None
+                torch.cuda.empty_cache()
             return ({"waveform": audio_tensor, "sample_rate": 24000},)
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
+            if unload_model:
+                del model
+                self.model_cache = None
+                torch.cuda.empty_cache()
             raise
 
 
-
 class KokoroZHRun:
+    model_cache = None
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -161,18 +187,27 @@ class KokoroZHRun:
                 "text": ("STRING", {
                     "multiline": True, 
                     "default": "你好啊! 世界."
-                })
+                }),
+                "unload_model": ("BOOLEAN", {"default": False}),
             },
         }
 
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
-    CATEGORY = "MW-KokoroTTS"
-    def generate(self, text, voice):
+    CATEGORY = "MW/MW-KokoroTTS"
+    def generate(self, text, voice, unload_model):
         REPO_ID = 'hexgrad/Kokoro-82M-v1.1-zh'
-
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if self.model_cache is None:
+            model = KModel(
+                        repo_id=REPO_ID,
+                        config = zh_kk_config_path,
+                        model = zh_kk_model_path).to(device).eval()
+            self.model_cache = model
+        else:
+            model = self.model_cache
+
         zh_model = KModel(
                     repo_id=REPO_ID,
                     config = zh_kk_config_path,
@@ -210,9 +245,17 @@ class KokoroZHRun:
                 audio_data.append(np.zeros(5000))
             audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
             logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+            if unload_model:
+                del model
+                self.model_cache = None
+                torch.cuda.empty_cache()
             return ({"waveform": audio_tensor, "sample_rate": 24000},)
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
+            if unload_model:
+                del model
+                self.model_cache = None
+                torch.cuda.empty_cache()
             raise
 
 
