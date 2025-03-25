@@ -132,7 +132,7 @@ class KokoroRun:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
-    CATEGORY = "MW/MW-KokoroTTS"
+    CATEGORY = "🎤MW/MW-KokoroTTS"
 
     def _get_lang(self, voice):
         if voice in all_speakers:
@@ -195,7 +195,7 @@ class KokoroZHRun:
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
-    CATEGORY = "MW/MW-KokoroTTS"
+    CATEGORY = "🎤MW/MW-KokoroTTS"
     def generate(self, text, voice, unload_model):
         REPO_ID = 'hexgrad/Kokoro-82M-v1.1-zh'
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
