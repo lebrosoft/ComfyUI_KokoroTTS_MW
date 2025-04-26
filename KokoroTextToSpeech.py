@@ -5,6 +5,8 @@ import torch
 import logging
 import os
 from pathlib import Path
+import folder_paths
+
 
 logger = logging.getLogger(__name__)
 
@@ -101,31 +103,31 @@ zh_all_speakers = ['zf_001.pt', 'zf_002.pt', 'zf_003.pt', 'zf_004.pt', 'zf_005.p
                    'zm_068.pt', 'zm_069.pt', 'zm_080.pt', 'zm_081.pt', 'zm_082.pt', 'zm_089.pt', 'zm_091.pt', 'zm_095.pt', 
                    'zm_096.pt', 'zm_097.pt', 'zm_098.pt', 'zm_100.pt']
 
-node_dir = os.path.dirname(os.path.abspath(__file__))
-comfy_path = os.path.dirname(os.path.dirname(node_dir))
-kokoro_path = os.path.join(comfy_path, "models", "Kokorotts", "Kokoro-82M")
+models_dir =  folder_paths.models_dir
+
+kokoro_path = os.path.join(models_dir, "Kokorotts", "Kokoro-82M")
 kk_config_path = os.path.join(kokoro_path, "config.json")
 kk_model_path = os.path.join(kokoro_path, "kokoro-v1_0.pth")
 voices_path = os.path.join(kokoro_path, "voices")
 
-zh_kokoro_path = os.path.join(comfy_path, "models", "Kokorotts", "Kokoro-82M-v1.1-zh")
+zh_kokoro_path = os.path.join(models_dir, "Kokorotts", "Kokoro-82M-v1.1-zh")
 zh_kk_config_path = os.path.join(zh_kokoro_path, "config.json")
 zh_kk_model_path = os.path.join(zh_kokoro_path, "kokoro-v1_1-zh.pth")
 zh_voices_path = os.path.join(zh_kokoro_path, "voices")
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 class KokoroRun:
-    model_cache = None
+    def __init__(self):
+        self.model_cache = None
+        self.voice_tensor = None
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "voice": (all_speakers, {"default": "zm_yunyang.pt"}),
-                "text": ("STRING", {
-                    "multiline": True, 
-                    "default": "你好啊! 世界."
-                }),
-                "unload_model": ("BOOLEAN", {"default": False}),
+                "text": ("STRING", {"forceInput": True}),
+                "unload_model": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -143,51 +145,54 @@ class KokoroRun:
             raise ValueError("This is a unsupported voice")
 
     def generate(self, text, voice, unload_model):
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
         if self.model_cache is None:      
-            model = KModel(
+            self.model_cache = KModel(
                         config = kk_config_path,
                         model = kk_model_path).to(device).eval()
-            KokoroRun.model_cache = model
-            del model
-            torch.cuda.empty_cache()
 
         lang = self._get_lang(voice)
         pipeline = KPipeline(lang_code=lang, repo_id=None, model=self.model_cache)
-        voice_tensor = torch.load(Path(voices_path, voice), weights_only=True)
+        self.voice_tensor = torch.load(Path(voices_path, voice), weights_only=True)
 
         try:
-            generator = pipeline(text, voice=voice_tensor, speed=1, split_pattern=r"\n+")
+            generator = pipeline(text, voice=self.voice_tensor, speed=1, split_pattern=r"\n+")
             audio_data = []
             for i, (gs, ps, data) in enumerate(generator):
                 audio_data.append(data)
             audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
             logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+
             if unload_model:
-                KokoroRun.model_cache = None
+                self.model_cache = None
+                self.voice_tensor = None
                 torch.cuda.empty_cache()
+
             return ({"waveform": audio_tensor, "sample_rate": 24000},)
+        
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
+
             if unload_model:
-                KokoroRun.model_cache = None
+                self.model_cache = None
+                self.voice_tensor = None
                 torch.cuda.empty_cache()
             raise
 
 
 class KokoroZHRun:
-    model_cache = None
-    en_model_cache = None
+    def __init__(self):
+        self.model_cache = None
+        self.en_model_cache = None
+        self.voice_tensor = None
+
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "voice": (zh_all_speakers, {"default": "zf_001.pt"}),
-                "text": ("STRING", {
-                    "multiline": True, 
-                    "default": "你好啊! 世界."
-                }),
-                "unload_model": ("BOOLEAN", {"default": False}),
+                "text": ("STRING", {"forceInput": True}),
+                "unload_model": ("BOOLEAN", {"default": True}),
             },
         }
 
@@ -197,23 +202,15 @@ class KokoroZHRun:
     CATEGORY = "🎤MW/MW-KokoroTTS"
     def generate(self, text, voice, unload_model):
         REPO_ID = 'hexgrad/Kokoro-82M-v1.1-zh'
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         if self.model_cache is None:
-            model = KModel(
+            self.model_cache = KModel(
                         repo_id=REPO_ID,
                         config = zh_kk_config_path,
                         model = zh_kk_model_path).to(device).eval()
-            KokoroZHRun.model_cache = model
-            del model
-            torch.cuda.empty_cache()
 
-        if self.en_model_cache is None:
-            en_model = KPipeline(lang_code='a',
+            self.en_model_cache = KPipeline(lang_code='a',
                                 repo_id=REPO_ID, 
                                 model=False)
-            KokoroZHRun.en_model_cache = en_model
-            del en_model
-            torch.cuda.empty_cache()
         
         def en_callable(text):
             if text == 'Kokoro':
@@ -226,7 +223,7 @@ class KokoroZHRun:
                         repo_id=REPO_ID, 
                         model=self.model_cache, 
                         en_callable=en_callable)
-        voice_tensor = torch.load(Path(zh_voices_path, voice), weights_only=True)
+        self.voice_tensor = torch.load(Path(zh_voices_path, voice), weights_only=True)
         
         def speed_callable(len_ps):
             speed = 0.8
@@ -237,23 +234,29 @@ class KokoroZHRun:
             return speed * 1.1
         
         try:
-            generator = zh_pipeline(text, voice=voice_tensor, speed=speed_callable, split_pattern=r"\n+")
+            generator = zh_pipeline(text, voice=self.voice_tensor, speed=speed_callable, split_pattern=r"\n+")
             audio_data = []
             for i, (gs, ps, data) in enumerate(generator):
                 audio_data.append(data)
                 audio_data.append(np.zeros(5000))
+
             audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
             logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+
             if unload_model:
-                KokoroZHRun.model_cache = None
-                KokoroZHRun.en_model_cache = None
+                self.model_cache = None
+                self.en_model_cache = None
+                self.voice_tensor = None
                 torch.cuda.empty_cache()
+                
             return ({"waveform": audio_tensor, "sample_rate": 24000},)
+        
         except Exception as e:
             logger.error(f"Generation failed: {str(e)}")
             if unload_model:
-                KokoroZHRun.model_cache = None
-                KokoroZHRun.en_model_cache = None
+                self.model_cache = None
+                self.en_model_cache = None
+                self.voice_tensor = None
                 torch.cuda.empty_cache()
             raise
 
