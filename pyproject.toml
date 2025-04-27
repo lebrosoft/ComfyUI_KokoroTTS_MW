@@ -1,7 +1,7 @@
 [project]
 name = "kokorotts_mw"
 description = "A Text To Speech node using Kokoro TTS in ComfyUI. Supports 8 languages and 150 voices"
-version = "2.1.3"
+version = "2.1.4"
 license = {file = "LICENSE"}
 
 [project.urls]
