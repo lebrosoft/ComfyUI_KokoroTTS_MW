@@ -126,7 +126,7 @@ class KokoroRun:
         return {
             "required": {
                 "voice": (all_speakers, {"default": "zm_yunyang.pt"}),
-                "text": ("STRING", {"forceInput": True}),
+                "text": ("STRING", {"default": "", "multiline": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
         }
@@ -191,7 +191,7 @@ class KokoroZHRun:
         return {
             "required": {
                 "voice": (zh_all_speakers, {"default": "zf_001.pt"}),
-                "text": ("STRING", {"forceInput": True}),
+                "text": ("STRING", {"default": "", "multiline": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
         }

@@ -1,6 +1,5 @@
-numpy<2
-kokoro>=0.8.2
+kokoro
 soundfile
-misaki[zh]>=0.8.2
+misaki[zh]
 misaki[ja]
 misaki[en]
