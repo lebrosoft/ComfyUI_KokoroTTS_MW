@@ -117,17 +117,47 @@ zh_voices_path = os.path.join(zh_kokoro_path, "voices")
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
+
+def get_speaker_text_audio(text, audio_1, audio_2):
+    import re
+    
+    pattern = r'(\[s?S?1\]|\[s?S?2\])\s*([\s\S]*?)(?=\[s?S?[12]\]|$)'
+    matches = re.findall(pattern, text)
+    if len(matches) == 0:
+        raise ValueError("No speaker tags found in the text: [S1]... [S2]...")
+    labels = []
+    contents = []
+    audios = []
+
+    for label, content in matches:
+        labels.append(label)
+        contents.append(content)
+    
+    audios = [
+        audio_1 if i.lower() == '[s1]' else audio_2 for i in labels
+    ]
+    
+    return (contents, audios,)
+
+
 MODEL_CACHE = None
 VOICE_TENSOR = None
+VOICE_S2_TENSOR = None
 class KokoroRun:
+    def __init__(self):
+        self.voice = None
+        self.voice_s2 = None
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "voice": (all_speakers, {"default": "zm_yunyang.pt"}),
-                "text": ("STRING", {"default": "", "multiline": True}),
+                "text": ("STRING", {"forceInput": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
+            " optional": {
+                "voice_s2": (all_speakers, {"default": "zf_xiaobei.pt"}),
+            }
         }
 
     RETURN_TYPES = ("AUDIO",)
@@ -143,62 +173,86 @@ class KokoroRun:
         else:
             raise ValueError("This is a unsupported voice")
 
-    def generate(self, text, voice, unload_model):
-        global MODEL_CACHE, VOICE_TENSOR
+    def generate(self, text, voice, voice_s2=None, unload_model=True):
+        global MODEL_CACHE, VOICE_TENSOR,  VOICE_S2_TENSOR
         if MODEL_CACHE is None:      
             MODEL_CACHE = KModel(
                         config = kk_config_path,
                         model = kk_model_path).to(device).eval()
+            
+        if voice_s2 is None:
+            lang = self._get_lang(voice)
+            pipeline = KPipeline(lang_code=lang, repo_id=None, model=MODEL_CACHE)
 
-        lang = self._get_lang(voice)
-        pipeline = KPipeline(lang_code=lang, repo_id=None, model=MODEL_CACHE)
-        VOICE_TENSOR = torch.load(Path(voices_path, voice), weights_only=True)
+            if VOICE_TENSOR is None or voice != self.voice:
+                VOICE_TENSOR = torch.load(Path(voices_path, voice), weights_only=True)
 
-        try:
             generator = pipeline(text, voice=VOICE_TENSOR, speed=1, split_pattern=r"\n+")
+
             audio_data = []
             for i, (gs, ps, data) in enumerate(generator):
                 audio_data.append(data)
-            audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
-            logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+            
+        else:
+            pipeline_s1 = KPipeline(lang_code=self._get_lang(voice), repo_id=None, model=MODEL_CACHE)
+            pipeline_s2 = KPipeline(lang_code=self._get_lang(voice_s2), repo_id=None, model=MODEL_CACHE)
 
-            if unload_model:
-                MODEL_CACHE = None
-                VOICE_TENSOR = None
-                torch.cuda.empty_cache()
+            if VOICE_TENSOR is None or voice != self.voice:
+                self.voice = voice
+                VOICE_TENSOR = torch.load(Path(voices_path, voice), weights_only=True)
 
-            return ({"waveform": audio_tensor, "sample_rate": 24000},)
-        
-        except Exception as e:
-            logger.error(f"Generation failed: {str(e)}")
+            if VOICE_S2_TENSOR is None or voice_s2 != self.voice_s2:
+                self.voice_s2 = voice_s2
+                VOICE_S2_TENSOR = torch.load(Path(voices_path, voice_s2), weights_only=True)
 
-            if unload_model:
-                MODEL_CACHE = None
-                VOICE_TENSOR = None
-                torch.cuda.empty_cache()
-            raise
+            audio_data = []
+            for t, a in zip(*get_speaker_text_audio(text, voice, voice_s2)):
+                if a == voice:
+                     generator = pipeline_s1(t, voice=VOICE_TENSOR, speed=1, split_pattern=r"\n+")
+                     for i, (gs, ps, data) in enumerate(generator):
+                         audio_data.append(data)
+                else:
+                     generator = pipeline_s2(t, voice=VOICE_S2_TENSOR, speed=1, split_pattern=r"\n+")
+                     for i, (gs, ps, data) in enumerate(generator):
+                         audio_data.append(data)
+
+        audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
+        logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+    
+        if unload_model:
+            MODEL_CACHE = None
+            VOICE_TENSOR = None
+            VOICE_S2_TENSOR = None
+            torch.cuda.empty_cache()
+
+        return ({"waveform": audio_tensor, "sample_rate": 24000},)
+
 
 MODEL_CACHE_ZH = None
 EN_MODEL_CACHE_ZH = None
 VOICE_TENSOR_ZH = None
+VOICE_S2_TENSOR_ZH = None
 class KokoroZHRun:
     @classmethod
     def INPUT_TYPES(s):
         return {
             "required": {
                 "voice": (zh_all_speakers, {"default": "zf_001.pt"}),
-                "text": ("STRING", {"default": "", "multiline": True}),
+                "text": ("STRING", {"forceInput": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
+             " optional": {
+                "voice_s2": (zh_all_speakers, {"default": "zf_002.pt"}),
+            }
         }
 
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
     CATEGORY = "🎤MW/MW-KokoroTTS"
-    def generate(self, text, voice, unload_model):
+    def generate(self, text, voice, voice_s2, unload_model):
         REPO_ID = 'hexgrad/Kokoro-82M-v1.1-zh'
-        global MODEL_CACHE_ZH, EN_MODEL_CACHE_ZH, VOICE_TENSOR_ZH
+        global MODEL_CACHE_ZH, EN_MODEL_CACHE_ZH, VOICE_TENSOR_ZH, VOICE_S2_TENSOR_ZH
         if MODEL_CACHE_ZH is None:
             MODEL_CACHE_ZH = KModel(
                         repo_id=REPO_ID,
@@ -216,12 +270,6 @@ class KokoroZHRun:
                 return 'sˈOl'
             return next(EN_MODEL_CACHE_ZH(text)).phonemes
         
-        zh_pipeline = KPipeline(lang_code="z", 
-                        repo_id=REPO_ID, 
-                        model=MODEL_CACHE_ZH, 
-                        en_callable=en_callable)
-        VOICE_TENSOR_ZH = torch.load(Path(zh_voices_path, voice), weights_only=True)
-        
         def speed_callable(len_ps):
             speed = 0.8
             if len_ps <= 83:
@@ -230,35 +278,76 @@ class KokoroZHRun:
                 speed = 1 - (len_ps - 83) / 500
             return speed * 1.1
         
-        try:
+        zh_pipeline = KPipeline(lang_code="z", 
+                        repo_id=REPO_ID, 
+                        model=MODEL_CACHE_ZH, 
+                        en_callable=en_callable)
+        
+        if voice_s2 is None:
+            if VOICE_TENSOR_ZH is None or voice != self.voice:
+                VOICE_TENSOR_ZH = torch.load(Path(voices_path, voice), weights_only=True)
+
             generator = zh_pipeline(text, voice=VOICE_TENSOR_ZH, speed=speed_callable, split_pattern=r"\n+")
             audio_data = []
             for i, (gs, ps, data) in enumerate(generator):
                 audio_data.append(data)
                 audio_data.append(np.zeros(5000))
 
-            audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
-            logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+        else:
+            if VOICE_TENSOR_ZH is None or voice != self.voice:
+                self.voice = voice
+                VOICE_TENSOR_ZH = torch.load(Path(voices_path, voice), weights_only=True)
 
-            if unload_model:
-                MODEL_CACHE_ZH = None
-                EN_MODEL_CACHE_ZH = None
-                VOICE_TENSOR_ZH = None
-                torch.cuda.empty_cache()
-                
-            return ({"waveform": audio_tensor, "sample_rate": 24000},)
+            if VOICE_S2_TENSOR_ZH is None or voice_s2 != self.voice_s2:
+                self.voice_s2 = voice_s2
+                VOICE_S2_TENSOR_ZH = torch.load(Path(voices_path, voice_s2), weights_only=True)
+
+            audio_data = []
+            for t, a in zip(*get_speaker_text_audio(text, voice, voice_s2)):
+                if a == voice:
+                     generator = zh_pipeline(t, voice=VOICE_TENSOR_ZH, speed=speed_callable, split_pattern=r"\n+")
+                     for i, (gs, ps, data) in enumerate(generator):
+                         audio_data.append(data)
+                else:
+                     generator = zh_pipeline(t, voice=VOICE_S2_TENSOR_ZH, speed=speed_callable, split_pattern=r"\n+")
+                     for i, (gs, ps, data) in enumerate(generator):
+                         audio_data.append(data)
+
+        audio_tensor = torch.from_numpy(np.concatenate(audio_data, axis=0)).unsqueeze(0).unsqueeze(0).float()
+        logger.info(f"Generated audio with shape: {audio_tensor.shape}")
+
+        if unload_model:
+            MODEL_CACHE_ZH = None
+            EN_MODEL_CACHE_ZH = None
+            VOICE_TENSOR_ZH = None
+            torch.cuda.empty_cache()
+            
+        return ({"waveform": audio_tensor, "sample_rate": 24000},)
         
-        except Exception as e:
-            logger.error(f"Generation failed: {str(e)}")
-            if unload_model:
-                MODEL_CACHE_ZH = None
-                EN_MODEL_CACHE_ZH = None
-                VOICE_TENSOR_ZH = None
-                torch.cuda.empty_cache()
-            raise
+        
+class MultiLinePromptKK:
+    @classmethod
+    def INPUT_TYPES(cls):
+               
+        return {
+            "required": {
+                "multi_line_prompt": ("STRING", {
+                    "multiline": True, 
+                    "default": ""}),
+                },
+        }
 
+    CATEGORY = "🎤MW/MW-KokoroTTS"
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("text",)
+    FUNCTION = "promptgen"
+    
+    def promptgen(self, multi_line_prompt: str):
+        return (multi_line_prompt.strip(),)
+    
 
 NODE_CLASS_MAPPINGS = {
     "Kokoro Run": KokoroRun,
-    "Kokoro ZH Run": KokoroZHRun
+    "Kokoro ZH Run": KokoroZHRun,
+    "Multi Line Text": MultiLinePromptKK,
 }
