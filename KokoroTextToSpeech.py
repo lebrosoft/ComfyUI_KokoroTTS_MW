@@ -1,5 +1,4 @@
 from kokoro import KPipeline, KModel
-import soundfile as sf
 import numpy as np
 import torch
 import logging
@@ -155,7 +154,8 @@ class KokoroRun:
                 "text": ("STRING", {"forceInput": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
-            " optional": {
+            "optional": {
+                "enable_dialogue": ("BOOLEAN", {"default": False}),
                 "voice_s2": (all_speakers, {"default": "zf_xiaobei.pt"}),
             }
         }
@@ -173,14 +173,14 @@ class KokoroRun:
         else:
             raise ValueError("This is a unsupported voice")
 
-    def generate(self, text, voice, voice_s2=None, unload_model=True):
+    def generate(self, text, voice, enable_dialogue, voice_s2=None, unload_model=True):
         global MODEL_CACHE, VOICE_TENSOR,  VOICE_S2_TENSOR
         if MODEL_CACHE is None:      
             MODEL_CACHE = KModel(
                         config = kk_config_path,
                         model = kk_model_path).to(device).eval()
             
-        if voice_s2 is None:
+        if not enable_dialogue:
             lang = self._get_lang(voice)
             pipeline = KPipeline(lang_code=lang, repo_id=None, model=MODEL_CACHE)
 
@@ -241,7 +241,8 @@ class KokoroZHRun:
                 "text": ("STRING", {"forceInput": True}),
                 "unload_model": ("BOOLEAN", {"default": True}),
             },
-             " optional": {
+             "optional": {
+                "enable_dialogue": ("BOOLEAN", {"default": False}),
                 "voice_s2": (zh_all_speakers, {"default": "zf_002.pt"}),
             }
         }
@@ -250,7 +251,7 @@ class KokoroZHRun:
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate"
     CATEGORY = "🎤MW/MW-KokoroTTS"
-    def generate(self, text, voice, voice_s2, unload_model):
+    def generate(self, text, voice, enable_dialogue, voice_s2, unload_model):
         REPO_ID = 'hexgrad/Kokoro-82M-v1.1-zh'
         global MODEL_CACHE_ZH, EN_MODEL_CACHE_ZH, VOICE_TENSOR_ZH, VOICE_S2_TENSOR_ZH
         if MODEL_CACHE_ZH is None:
@@ -283,9 +284,9 @@ class KokoroZHRun:
                         model=MODEL_CACHE_ZH, 
                         en_callable=en_callable)
         
-        if voice_s2 is None:
+        if not enable_dialogue:
             if VOICE_TENSOR_ZH is None or voice != self.voice:
-                VOICE_TENSOR_ZH = torch.load(Path(voices_path, voice), weights_only=True)
+                VOICE_TENSOR_ZH = torch.load(Path(zh_voices_path, voice), weights_only=True)
 
             generator = zh_pipeline(text, voice=VOICE_TENSOR_ZH, speed=speed_callable, split_pattern=r"\n+")
             audio_data = []
@@ -296,11 +297,11 @@ class KokoroZHRun:
         else:
             if VOICE_TENSOR_ZH is None or voice != self.voice:
                 self.voice = voice
-                VOICE_TENSOR_ZH = torch.load(Path(voices_path, voice), weights_only=True)
+                VOICE_TENSOR_ZH = torch.load(Path(zh_voices_path, voice), weights_only=True)
 
             if VOICE_S2_TENSOR_ZH is None or voice_s2 != self.voice_s2:
                 self.voice_s2 = voice_s2
-                VOICE_S2_TENSOR_ZH = torch.load(Path(voices_path, voice_s2), weights_only=True)
+                VOICE_S2_TENSOR_ZH = torch.load(Path(zh_voices_path, voice_s2), weights_only=True)
 
             audio_data = []
             for t, a in zip(*get_speaker_text_audio(text, voice, voice_s2)):
@@ -347,7 +348,13 @@ class MultiLinePromptKK:
     
 
 NODE_CLASS_MAPPINGS = {
-    "Kokoro Run": KokoroRun,
-    "Kokoro ZH Run": KokoroZHRun,
-    "Multi Line Text": MultiLinePromptKK,
+    "KokoroRun": KokoroRun,
+    "KokoroZHRun": KokoroZHRun,
+    "MultiLinePromptKK": MultiLinePromptKK,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "KokoroRun": "Kokoro Run",
+    "KokoroZHRun": "Kokoro ZH Run",
+    "MultiLinePromptKK": "Multi Line Text",
 }

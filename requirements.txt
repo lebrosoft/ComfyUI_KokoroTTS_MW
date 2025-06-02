@@ -1,5 +1,4 @@
 kokoro
-soundfile
 misaki[zh]
 misaki[ja]
 misaki[en]
